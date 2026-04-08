@@ -1194,14 +1194,24 @@ set(Skia_SkCMS_SKX_FLAGS
     -mavx512vl
 )
 
+# AVX-512 support: disabled by default to ensure compatibility with CPUs that
+# only have AVX2 (e.g., Haswell through most consumer CPUs).
+# Enable with -DWEBKIT_ENABLE_AVX512=ON for CPUs with AVX-512 support.
+option(WEBKIT_ENABLE_AVX512 "Enable AVX-512 optimizations in Skia (requires AVX-512 capable CPU)" OFF)
+
 if (WTF_CPU_X86 OR WTF_CPU_X86_64)
-    target_compile_definitions(Skia PRIVATE SK_ENABLE_AVX512_OPTS)
-
     WEBKIT_CHECK_COMPILER_FLAGS(CXX Skia_SkCMS_HSW_OPTS ${Skia_SkCMS_HSW_FLAGS})
-    WEBKIT_CHECK_COMPILER_FLAGS(CXX Skia_SkCMS_SKX_OPTS ${Skia_SkCMS_SKX_FLAGS})
-
     WEBKIT_ADD_COMPILER_FLAGS(CXX SOURCE src/opts/SkOpts_hsw.cpp "-march=haswell")
-    WEBKIT_ADD_COMPILER_FLAGS(CXX SOURCE src/opts/SkOpts_skx.cpp "-march=skylake-avx512")
+
+    if (WEBKIT_ENABLE_AVX512)
+        target_compile_definitions(Skia PRIVATE SK_ENABLE_AVX512_OPTS)
+        WEBKIT_CHECK_COMPILER_FLAGS(CXX Skia_SkCMS_SKX_OPTS ${Skia_SkCMS_SKX_FLAGS})
+        WEBKIT_ADD_COMPILER_FLAGS(CXX SOURCE src/opts/SkOpts_skx.cpp "-march=skylake-avx512")
+    else ()
+        # Disable AVX-512 optimizations for broader CPU compatibility
+        target_compile_definitions(Skia PRIVATE SK_DISABLE_AVX512_OPTS)
+        set(Skia_SkCMS_SKX_OPTS FALSE)
+    endif ()
 endif ()
 
 if (Skia_SkCMS_HSW_OPTS)
